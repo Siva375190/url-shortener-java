@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Snip — a URL shortener</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10151c;
+    --ink-soft:#1a222c;
+    --paper:#eef1ee;
+    --wire:#39424e;
+    --brass:#e8a33d;
+    --brass-dim:#a97a2e;
+    --ok:#7fb88f;
+    --err:#d9705f;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Space Grotesk', sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:0 20px 80px;
+  }
+  .thread{
+    width:100%;
+    max-width:640px;
+    margin-top:56px;
+  }
+  header.hero{
+    text-align:left;
+    margin-bottom:48px;
+    position:relative;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--brass);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:18px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:22px;
+    height:1px;
+    background:var(--brass);
+    display:inline-block;
+  }
+  h1{
+    font-size:clamp(38px, 7vw, 58px);
+    line-height:0.98;
+    font-weight:700;
+    margin:0 0 14px;
+    letter-spacing:-0.02em;
+  }
+  h1 .strike{
+    position:relative;
+    color:#6c7684;
+  }
+  h1 .strike::after{
+    content:"";
+    position:absolute;
+    left:-2%;
+    right:-2%;
+    top:52%;
+    height:3px;
+    background:var(--brass);
+    transform:rotate(-2deg);
+  }
+  .sub{
+    color:#9aa4b1;
+    font-size:16px;
+    max-width:46ch;
+    line-height:1.5;
+  }
+
+  form.snip{
+    display:flex;
+    gap:0;
+    border:1px solid var(--wire);
+    background:var(--ink-soft);
+  }
+  form.snip:focus-within{
+    border-color:var(--brass);
+  }
+  form.snip input[type="url"]{
+    flex:1;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--paper);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    padding:16px 14px;
+  }
+  form.snip input::placeholder{color:#5c6673;}
+  form.snip button{
+    background:var(--brass);
+    color:var(--ink);
+    border:none;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:14px;
+    padding:0 22px;
+    cursor:pointer;
+    transition:background 0.15s ease;
+    white-space:nowrap;
+  }
+  form.snip button:hover{background:#f3b352;}
+  form.snip button:disabled{background:#5c6673;cursor:not-allowed;}
+
+  .adv{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:10px;
+  }
+  .adv label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:#6c7684;
+    letter-spacing:0.05em;
+  }
+  .adv input{
+    background:var(--ink-soft);
+    border:1px solid var(--wire);
+    color:var(--paper);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    padding:6px 8px;
+    width:150px;
+    outline:none;
+  }
+  .adv input:focus{border-color:var(--brass);}
+
+  .msg{
+    margin-top:16px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    display:none;
+  }
+  .msg.show{display:block;}
+  .msg.err{color:var(--err);}
+
+  .result{
+    margin-top:16px;
+    padding:16px;
+    background:var(--ink-soft);
+    border-left:2px solid var(--ok);
+    display:none;
+  }
+  .result.show{display:block;}
+  .result .row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .result a{
+    color:var(--brass);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    text-decoration:none;
+    word-break:break-all;
+  }
+  .result a:hover{text-decoration:underline;}
+  .result button{
+    background:transparent;
+    border:1px solid var(--wire);
+    color:var(--paper);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    padding:6px 10px;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .result button:hover{border-color:var(--brass);color:var(--brass);}
+  .result .orig{
+    font-size:12px;
+    color:#6c7684;
+    margin-top:8px;
+    word-break:break-all;
+  }
+
+  .ledger{
+    margin-top:64px;
+  }
+  .ledger h2{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:#6c7684;
+    font-weight:500;
+    margin:0 0 16px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .ledger h2::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--wire);
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+  }
+  th{
+    text-align:left;
+    color:#6c7684;
+    font-weight:500;
+    font-size:11px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    padding:0 10px 10px 0;
+    border-bottom:1px solid var(--wire);
+  }
+  td{
+    padding:12px 10px 12px 0;
+    border-bottom:1px solid #232c37;
+    vertical-align:top;
+  }
+  td.code a{color:var(--brass);text-decoration:none;}
+  td.code a:hover{text-decoration:underline;}
+  td.orig{color:#9aa4b1;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  td.clicks{color:var(--paper);text-align:right;}
+  .empty-row td{color:#5c6673;font-style:italic;padding:20px 0;}
+
+  footer{
+    margin-top:60px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:#4a525e;
+  }
+
+  @media (max-width:480px){
+    form.snip{flex-direction:column;}
+    form.snip button{padding:14px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="thread">
+  <header class="hero">
+    <div class="eyebrow">Link compression</div>
+    <h1>Make it <span class="strike">long</span><br/>Make it short.</h1>
+    <p class="sub">Paste a URL. Get back something you can actually say out loud. No account, no tracking pixels — just a code and a redirect.</p>
+  </header>
+
+  <form class="snip" id="snipForm">
+    <input type="url" id="urlInput" placeholder="https://example.com/a/very/long/path?that=nobody&wants=to-type" required />
+    <button type="submit" id="submitBtn">Shorten</button>
+  </form>
+  <div class="adv">
+    <label for="customCode">custom code (optional)</label>
+    <input type="text" id="customCode" placeholder="my-link" maxlength="20" />
+  </div>
+
+  <div class="msg err" id="errMsg"></div>
+
+  <div class="result" id="result">
+    <div class="row">
+      <a href="#" id="resultLink" target="_blank" rel="noopener"></a>
+      <button id="copyBtn">Copy</button>
+    </div>
+    <div class="orig" id="resultOrig"></div>
+  </div>
+
+  <section class="ledger">
+    <h2>Recent</h2>
+    <table>
+      <thead>
+        <tr><th>Code</th><th>Destination</th><th style="text-align:right;">Clicks</th></tr>
+      </thead>
+      <tbody id="ledgerBody">
+        <tr class="empty-row"><td colspan="3">Nothing shortened yet.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>snip — express + sqlite, built for a showcase.</footer>
+</div>
+
+<script>
+const form = document.getElementById('snipForm');
+const urlInput = document.getElementById('urlInput');
+const customCode = document.getElementById('customCode');
+const submitBtn = document.getElementById('submitBtn');
+const errMsg = document.getElementById('errMsg');
+const result = document.getElementById('result');
+const resultLink = document.getElementById('resultLink');
+const resultOrig = document.getElementById('resultOrig');
+const copyBtn = document.getElementById('copyBtn');
+const ledgerBody = document.getElementById('ledgerBody');
+
+async function loadLedger(){
+  try{
+    const res = await fetch('/api/urls');
+    const rows = await res.json();
+    if(!rows.length){
+      ledgerBody.innerHTML = '<tr class="empty-row"><td colspan="3">Nothing shortened yet.</td></tr>';
+      return;
+    }
+    ledgerBody.innerHTML = rows.map(r => `
+      <tr>
+        <td class="code"><a href="/${r.code}" target="_blank" rel="noopener">/${r.code}</a></td>
+        <td class="orig" title="${escapeHtml(r.original_url)}">${escapeHtml(r.original_url)}</td>
+        <td class="clicks">${r.clicks}</td>
+      </tr>
+    `).join('');
+  }catch(e){
+    // silent - ledger is a nice-to-have
+  }
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errMsg.classList.remove('show');
+  result.classList.remove('show');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Snipping…';
+
+  try{
+    const res = await fetch('/api/shorten', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        url: urlInput.value.trim(),
+        customCode: customCode.value.trim() || undefined
+      })
+    });
+    const data = await res.json();
+
+    if(!res.ok){
+      errMsg.textContent = data.error || 'Something went wrong.';
+      errMsg.classList.add('show');
+      return;
+    }
+
+    resultLink.href = data.shortUrl;
+    resultLink.textContent = data.shortUrl;
+    resultOrig.textContent = data.originalUrl;
+    result.classList.add('show');
+    urlInput.value = '';
+    customCode.value = '';
+    loadLedger();
+  }catch(err){
+    errMsg.textContent = 'Could not reach the server. Is it running?';
+    errMsg.classList.add('show');
+  }finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Shorten';
+  }
+});
+
+copyBtn.addEventListener('click', async () => {
+  try{
+    await navigator.clipboard.writeText(resultLink.href);
+    copyBtn.textContent = 'Copied';
+    setTimeout(() => copyBtn.textContent = 'Copy', 1400);
+  }catch(e){
+    // clipboard API unavailable — user can still select the link text
+  }
+});
+
+loadLedger();
+</script>
+
+</body>
+</html>
